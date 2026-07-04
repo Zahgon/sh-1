@@ -3,13 +3,4 @@
 
 package expand
 
-import (
-	"errors"
-	"os"
-	"syscall"
-)
-
-func isWindowsErrPathNotFound(err error) bool {
-	var pathErr *os.PathError
-	return errors.As(err, &pathErr) && pathErr.Err == syscall.ERROR_PATH_NOT_FOUND
-}
+func isWindowsErrPathNotFound(err error) bool { _ = "STUB: not implemented"; return false }

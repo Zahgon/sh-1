@@ -3,13 +3,6 @@
 
 package expand
 
-import (
-	"cmp"
-	"runtime"
-	"slices"
-	"strings"
-)
-
 // Environ is the base interface for a shell's environment, allowing it to fetch
 // variables by name and to iterate over all the currently set variables.
 type Environ interface {
@@ -106,52 +99,25 @@ type Variable struct {
 // IsSet reports whether the variable has been set to a value.
 // The zero value of a Variable is unset.
 func (v Variable) IsSet() bool {
-	return v.Set
+	_ = "STUB: not implemented"
+
+	// Declared reports whether the variable has been declared.
+	// Declared variables may not be set; `export foo` is exported but not set to a value,
+	// and `declare -a foo` is an indexed array but not set to a value.
+	return false
 }
 
-// Declared reports whether the variable has been declared.
-// Declared variables may not be set; `export foo` is exported but not set to a value,
-// and `declare -a foo` is an indexed array but not set to a value.
-func (v Variable) Declared() bool {
-	return v.Set || v.Local || v.Exported || v.ReadOnly || v.Kind != Unknown
-}
+func (v Variable) Declared() bool { _ = "STUB: not implemented"; return false }
 
 // Flags returns the variable's attribute flags in the order used by bash's
 // declare builtin and ${var@a}: type (a/A/n), readonly (r), exported (x).
-func (v Variable) Flags() string {
-	var flags []byte
-	switch v.Kind {
-	case Indexed:
-		flags = append(flags, 'a')
-	case Associative:
-		flags = append(flags, 'A')
-	case NameRef:
-		flags = append(flags, 'n')
-	}
-	if v.ReadOnly {
-		flags = append(flags, 'r')
-	}
-	if v.Exported {
-		flags = append(flags, 'x')
-	}
-	return string(flags)
-}
+func (v Variable) Flags() string { _ = "STUB: not implemented"; return "" }
 
 // String returns the variable's value as a string. In general, this only makes
 // sense if the variable has a string value or no value at all.
-func (v Variable) String() string {
-	switch v.Kind {
-	case String:
-		return v.Str
-	case Indexed:
-		if len(v.List) > 0 {
-			return v.List[0]
-		}
-	case Associative:
-		// nothing to do
-	}
-	return ""
-}
+func (v Variable) String() string { _ = "STUB: not implemented"; return "" }
+
+// nothing to do
 
 // maxNameRefDepth defines the maximum number of times to follow references when
 // resolving a variable. Otherwise, simple name reference loops could crash a
@@ -161,88 +127,47 @@ const maxNameRefDepth = 100
 // Resolve follows a number of nameref variables, returning the last reference
 // name that was followed and the variable that it points to.
 func (v Variable) Resolve(env Environ) (string, Variable) {
-	name := ""
-	for range maxNameRefDepth {
-		if v.Kind != NameRef {
-			return name, v
-		}
-		name = v.Str // keep name for the next iteration
-		v = env.Get(name)
-	}
-	return name, Variable{}
+	_ = "STUB: not implemented"
+	return "", *new(Variable)
 }
+
+// keep name for the next iteration
 
 // FuncEnviron wraps a function mapping variable names to their string values,
 // and implements [Environ]. Empty strings returned by the function will be
 // treated as unset variables. All variables will be exported.
 //
 // Note that the returned Environ's Each method will be a no-op.
-func FuncEnviron(fn func(string) string) Environ {
-	return funcEnviron(fn)
-}
+func FuncEnviron(fn func(string) string) Environ { _ = "STUB: not implemented"; return *new(Environ) }
 
 type funcEnviron func(string) string
 
-func (f funcEnviron) Get(name string) Variable {
-	value := f(name)
-	if value == "" {
-		return Variable{}
-	}
-	return Variable{Set: true, Exported: true, Kind: String, Str: value}
+func (f funcEnviron) Get(name string) Variable { _ = "STUB: not implemented"; return *new(Variable) }
+
+func (f funcEnviron) Each(func(name string, vr Variable) bool) {
+	_ = "STUB: not implemented"
+
+	// ListEnviron returns an [Environ] with the supplied variables, in the form
+	// "key=value". All variables will be exported. The last value in pairs is used
+	// if multiple values are present.
+	//
+	// On Windows, where environment variable names are case-insensitive, the
+	// resulting variable names will all be uppercase.
+	return
 }
 
-func (f funcEnviron) Each(func(name string, vr Variable) bool) {}
-
-// ListEnviron returns an [Environ] with the supplied variables, in the form
-// "key=value". All variables will be exported. The last value in pairs is used
-// if multiple values are present.
-//
-// On Windows, where environment variable names are case-insensitive, the
-// resulting variable names will all be uppercase.
-func ListEnviron(pairs ...string) Environ {
-	return listEnviron_(runtime.GOOS == "windows", pairs...)
-}
+func ListEnviron(pairs ...string) Environ { _ = "STUB: not implemented"; return *new(Environ) }
 
 // listEnviron_ implements [ListEnviron], but letting the tests specify
 // whether to uppercase all names or not.
 func listEnviron_(caseInsensitive bool, pairs ...string) Environ {
-	list := slices.Clone(pairs)
-	env := listEnviron{caseInsensitive: caseInsensitive}
-	slices.SortStableFunc(list, func(a, b string) int {
-		isep := strings.IndexByte(a, '=')
-		jsep := strings.IndexByte(b, '=')
-		if isep < 0 {
-			isep = 0
-		} else {
-			isep += 1
-		}
-		if jsep < 0 {
-			jsep = 0
-		} else {
-			jsep += 1
-		}
-		return env.compare(a[:isep], b[:jsep])
-	})
-
-	last := ""
-	for i := 0; i < len(list); {
-		name, _, ok := strings.Cut(list[i], "=")
-		if name == "" || !ok {
-			// invalid element; remove it
-			list = slices.Delete(list, i, i+1)
-			continue
-		}
-		if env.compare(last, name) == 0 {
-			// duplicate; the last one wins
-			list = slices.Delete(list, i-1, i)
-			continue
-		}
-		last = name
-		i++
-	}
-	env.pairs = list
-	return env
+	_ = "STUB: not implemented"
+	return *new(Environ)
 }
+
+// invalid element; remove it
+
+// duplicate; the last one wins
 
 // listEnviron is a sorted list of "name=value" strings.
 type listEnviron struct {
@@ -250,47 +175,20 @@ type listEnviron struct {
 	pairs           []string
 }
 
-func (l listEnviron) compare(a, b string) int {
-	if l.caseInsensitive {
-		// This is not particularly efficient, but it does the job.
-		// If we had a cmp-compatible version of [strings.EqualFold], we'd use it.
-		a = strings.ToUpper(a)
-		b = strings.ToUpper(b)
-	}
-	return strings.Compare(a, b)
-}
+func (l listEnviron) compare(a, b string) int { _ = "STUB: not implemented"; return 0 }
 
-func (l listEnviron) Get(name string) Variable {
-	eqpos := len(name)
-	endpos := len(name) + 1
-	i, ok := slices.BinarySearchFunc(l.pairs, name, func(pair, name string) int {
-		if len(pair) < endpos {
-			// Too short; see if we are before or after the name.
-			return l.compare(pair, name)
-		}
-		// Compare the name prefix, then the equal character.
-		c := l.compare(pair[:eqpos], name)
-		eq := pair[eqpos]
-		if c == 0 {
-			return cmp.Compare(eq, '=')
-		}
-		return c
-	})
-	if ok {
-		return Variable{Set: true, Exported: true, Kind: String, Str: l.pairs[i][endpos:]}
-	}
-	return Variable{}
-}
+// This is not particularly efficient, but it does the job.
+// If we had a cmp-compatible version of [strings.EqualFold], we'd use it.
+
+func (l listEnviron) Get(name string) Variable { _ = "STUB: not implemented"; return *new(Variable) }
+
+// Too short; see if we are before or after the name.
+
+// Compare the name prefix, then the equal character.
 
 func (l listEnviron) Each(fn func(name string, vr Variable) bool) {
-	for _, pair := range l.pairs {
-		name, value, ok := strings.Cut(pair, "=")
-		if !ok {
-			// should never happen; see listEnvironWithUpper
-			panic("expand.listEnviron: did not expect malformed name-value pair: " + pair)
-		}
-		if !fn(name, Variable{Set: true, Exported: true, Kind: String, Str: value}) {
-			return
-		}
-	}
+	_ = "STUB: not implemented"
+	return
 }
+
+// should never happen; see listEnvironWithUpper

@@ -6,47 +6,37 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"flag"
 	"fmt"
-	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime/debug"
-	"strings"
 
-	maybeio "github.com/google/renameio/v2/maybe"
-	diffpkg "github.com/rogpeppe/go-internal/diff"
 	"golang.org/x/term"
 	"mvdan.cc/editorconfig"
 
 	"mvdan.cc/sh/v3/fileutil"
 	"mvdan.cc/sh/v3/syntax"
-	"mvdan.cc/sh/v3/syntax/typedjson"
 )
 
 type boolStringValue string
 
-func (b *boolStringValue) Set(val string) error {
-	*b = boolStringValue(val)
-	return nil
-}
+func (b *boolStringValue) Set(val string) error { _ = "STUB: not implemented"; return nil }
 
-func (b *boolStringValue) String() string {
-	return string(*b)
-}
-func (*boolStringValue) IsBoolFlag() bool { return true }
+func (b *boolStringValue) String() string { _ = "STUB: not implemented"; return "" }
+
+func (*boolStringValue) IsBoolFlag() bool { _ = "STUB: not implemented"; return false }
 
 func boolStringVar(p *string, name string, value string, usage string) {
-	*p = value
-	flag.Var((*boolStringValue)(p), name, usage)
+	_ = "STUB: not implemented"
+	return
 }
 
 func langVariantVar(p *syntax.LangVariant, name string, value syntax.LangVariant, usage string) {
-	*p = value
-	flag.Var(p, name, usage)
+	_ = "STUB: not implemented"
+	return
 }
 
 type multiFlag[T any] struct {
@@ -55,14 +45,8 @@ type multiFlag[T any] struct {
 }
 
 func flagVal[T any](short, long string, val T, register func(*T, string, T, string)) *multiFlag[T] {
-	f := &multiFlag[T]{short, long, val}
-	if short != "" {
-		register(&f.val, short, val, "")
-	}
-	if long != "" {
-		register(&f.val, long, val, "")
-	}
-	return f
+	_ = "STUB: not implemented"
+	return nil
 }
 
 var (
@@ -324,58 +308,27 @@ var vcsDir = regexp.MustCompile(`^\.(git|svn|hg)$`)
 
 var errFormattingDiffers = fmt.Errorf("")
 
-func formatStdin(name string) error {
-	if write.val {
-		return fmt.Errorf("-w cannot be used on standard input")
-	}
-	if applyIgnore.val {
-		// Mimic the logic from walkPath to apply the ignore rules.
-		props, err := ecQuery.Find(name, []string{"shell"})
-		if err != nil {
-			return err
-		}
-		if props.Get("ignore") == "true" {
-			return nil
-		}
-	}
-	src, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		return err
-	}
-	l := lang.val
-	if l == syntax.LangAuto {
-		if l = langFromFilename(name); l == syntax.LangAuto {
-			shebangLang := fileutil.Shebang(src)
-			if err := l.Set(shebangLang); err != nil {
-				// Fall back to bash.
-				l = syntax.LangBash
-			}
-		}
-	}
-	return formatBytes(src, name, l)
-}
+func formatStdin(name string) error { _ = "STUB: not implemented"; return nil }
+
+// Mimic the logic from walkPath to apply the ignore rules.
+
+// Fall back to bash.
 
 func langFromFilename(name string) syntax.LangVariant {
+	_ = "STUB: not implemented"
 	// Detect shell config files, which typically have no extension nor shebang.
 	// Note that these are not matched by [fileutil.CouldBeScript2],
 	// because these files are typically not part of source code projects,
 	// so finding these files when formatting entire directories is unnecessary.
-	switch strings.TrimPrefix(filepath.Base(name), ".") {
-	case "bash_profile", "bashrc", "bash_logout":
-		// Same as the usual fallback, but we can avoid trying to read a shebang.
-		return syntax.LangBash
-	case "zshenv", "zprofile", "zshrc", "zlogin", "zlogout":
-		return syntax.LangZsh
-	}
-
-	lang := syntax.LangAuto // fallback when none is found
-	if ext := strings.TrimPrefix(filepath.Ext(name), "."); ext != "sh" {
-		// Note that ".sh" doesn't mean it's POSIX Shell for sure.
-		// A shebang in the file contents could say Bash or some other POSIX-like shell.
-		lang.Set(ext)
-	}
-	return lang
+	return *new(syntax.LangVariant)
 }
+
+// Same as the usual fallback, but we can avoid trying to read a shebang.
+
+// fallback when none is found
+
+// Note that ".sh" doesn't mean it's POSIX Shell for sure.
+// A shebang in the file contents could say Bash or some other POSIX-like shell.
 
 var ecQuery = editorconfig.Query{
 	FileCache:   make(map[string]*editorconfig.File),
@@ -383,211 +336,58 @@ var ecQuery = editorconfig.Query{
 }
 
 func propsOptions(lang syntax.LangVariant, props editorconfig.Section) (_ syntax.LangVariant, validLang bool) {
+	_ = "STUB: not implemented"
 	// if shell_variant is set to a valid string, it will take precedence
-	langErr := lang.Set(props.Get("shell_variant"))
-	syntax.Variant(lang)(parser)
-
-	size := uint(0)
-	if props.Get("indent_style") == "space" {
-		size = 8
-		if n := props.IndentSize(); n > 0 {
-			size = uint(n)
-		}
-	}
-	syntax.Indent(size)(printer)
-
-	syntax.BinaryNextLine(props.Get("binary_next_line") == "true")(printer)
-	// TODO(v4): rename to case_indent for consistency with flags
-	syntax.SwitchCaseIndent(props.Get("switch_case_indent") == "true")(printer)
-	syntax.SpaceRedirects(props.Get("space_redirects") == "true")(printer)
-	syntax.KeepPadding(props.Get("keep_padding") == "true")(printer)
-	// TODO(v4): rename to func_next_line for consistency with flags
-	syntax.FunctionNextLine(props.Get("function_next_line") == "true")(printer)
-
-	minify := props.Get("minify") == "true"
-	syntax.Minify(minify)(printer)
-	// Note that --simplify is not actually a parser option, so we use a global var.
-	// Just like the CLI flags, minify=true implies simplify=true.
-	simplify.val = minify || props.Get("simplify") == "true"
-
-	return lang, langErr == nil
+	return *new(syntax.LangVariant), false
 }
 
-func formatPath(path string, checkShebang bool) error {
-	f, err := os.Open(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
+// TODO(v4): rename to case_indent for consistency with flags
 
-	l := lang.val
-	shebangForAuto := false
-	if l == syntax.LangAuto {
-		if l = langFromFilename(path); l == syntax.LangAuto {
-			shebangForAuto = true
-		}
-	}
-	readBuf.Reset()
-	if checkShebang || shebangForAuto {
-		n, err := io.ReadAtLeast(f, copyBuf[:32], len("#!/bin/sh\n"))
-		switch {
-		case !checkShebang:
-			// only wanted the shebang for LangAuto
-		case err == io.EOF, errors.Is(err, io.ErrUnexpectedEOF):
-			return nil // too short to have a shebang
-		case err != nil:
-			return err // some other read error
-		}
-		shebangLang := fileutil.Shebang(copyBuf[:n])
-		if checkShebang && shebangLang == "" {
-			return nil // not a shell script
-		}
-		if shebangForAuto {
-			if err := l.Set(shebangLang); err != nil {
-				// Fall back to bash.
-				l = syntax.LangBash
-			}
-		}
-		readBuf.Write(copyBuf[:n])
-	}
-	switch find.val {
-	case "true":
-		fmt.Println(path)
-		return nil
-	case "0":
-		fmt.Print(path)
-		fmt.Print("\000")
-		return nil
-	}
-	if _, err := io.CopyBuffer(&readBuf, f, copyBuf); err != nil {
-		return err
-	}
-	f.Close()
-	return formatBytes(readBuf.Bytes(), path, l)
-}
+// TODO(v4): rename to func_next_line for consistency with flags
+
+// Note that --simplify is not actually a parser option, so we use a global var.
+// Just like the CLI flags, minify=true implies simplify=true.
+
+func formatPath(path string, checkShebang bool) error { _ = "STUB: not implemented"; return nil }
+
+// only wanted the shebang for LangAuto
+
+// too short to have a shebang
+
+// some other read error
+
+// not a shell script
+
+// Fall back to bash.
 
 func editorConfigLangs(l syntax.LangVariant) []string {
+	_ = "STUB: not implemented"
 	// All known shells match [[shell]].
 	// As a special case, bash and the bash-like bats also match [[bash]],
 	// and zsh also matches [[zsh]].
 	// We can later consider others like [[mksh]] or [[posix-shell]],
 	// just consider what list of languages the EditorConfig spec might eventually use.
-	switch l {
-	case syntax.LangBash, syntax.LangBats:
-		return []string{"shell", "bash"}
-	case syntax.LangZsh:
-		return []string{"shell", "zsh"}
-	case syntax.LangPOSIX, syntax.LangMirBSDKorn, syntax.LangAuto:
-		return []string{"shell"}
-	}
 	return nil
 }
 
 func formatBytes(src []byte, path string, fileLang syntax.LangVariant) error {
-	fileLangFromEditorConfig := false
-	if useEditorConfig {
-		props, err := ecQuery.Find(path, editorConfigLangs(fileLang))
-		if err != nil {
-			return err
-		}
-		fileLang, fileLangFromEditorConfig = propsOptions(fileLang, props)
-	} else {
-		syntax.Variant(fileLang)(parser)
-	}
-	var node syntax.Node
-	var err error
-	if fromJSON.val {
-		node, err = typedjson.Decode(bytes.NewReader(src))
-		if err != nil {
-			return err
-		}
-	} else {
-		node, err = parser.Parse(bytes.NewReader(src), path)
-		if err != nil {
-			if s, ok := err.(syntax.LangError); ok && lang.val == syntax.LangAuto {
-				if fileLangFromEditorConfig {
-					return fmt.Errorf("%w (parsed as %s via EditorConfig)", s, fileLang)
-				}
-				return fmt.Errorf("%w (parsed as %s via -%s=%s)", s, fileLang, lang.short, lang.val)
-			}
-			return err
-		}
-	}
-	// Note that --simplify is treated as a parser option as it happens
-	// immediately after parsing, even if it's not a [syntax.ParserOption] today.
-	if simplify.val {
-		syntax.Simplify(node)
-	}
-	if toJSON.val {
-		// must be standard input; fine to return
-		// TODO: change the default behavior to be compact,
-		// and allow using --to-json=pretty or --to-json=indent.
-		return typedjson.EncodeOptions{Indent: "\t"}.Encode(os.Stdout, node)
-	}
-	writeBuf.Reset()
-	printer.Print(&writeBuf, node)
-	res := writeBuf.Bytes()
-	if !bytes.Equal(src, res) {
-		switch list.val {
-		case "true":
-			fmt.Println(path)
-		case "0":
-			fmt.Print(path)
-			fmt.Print("\000")
-		}
-		if write.val {
-			info, err := os.Lstat(path)
-			if err != nil {
-				return err
-			}
-			if !info.Mode().IsRegular() {
-				return fmt.Errorf("refusing to atomically replace %q with a regular file as it is not one already", path)
-			}
-			perm := info.Mode().Perm()
-			// TODO: support atomic writes on Windows?
-			if err := maybeio.WriteFile(path, res, perm); err != nil {
-				return err
-			}
-		}
-		if diff.val {
-			diffBytes := diffpkg.Diff(path+".orig", src, path, res)
-			if !color {
-				os.Stdout.Write(diffBytes)
-				return errFormattingDiffers
-			}
-			// The first three lines are the header with the filenames, including --- and +++,
-			// and are marked in bold.
-			current := terminalBold
-			os.Stdout.WriteString(current)
-			for i, line := range bytes.SplitAfter(diffBytes, []byte("\n")) {
-				last := current
-				switch {
-				case i < 3: // the first three lines are bold
-				case bytes.HasPrefix(line, []byte("@@")):
-					current = terminalCyan
-				case bytes.HasPrefix(line, []byte("-")):
-					current = terminalRed
-				case bytes.HasPrefix(line, []byte("+")):
-					current = terminalGreen
-				default:
-					current = terminalReset
-				}
-				if current != last {
-					os.Stdout.WriteString(current)
-				}
-				os.Stdout.Write(line)
-			}
-			return errFormattingDiffers
-		}
-		if list.val != "false" && !write.val {
-			return errFormattingDiffers
-		}
-	}
-	if list.val == "false" && !write.val && !diff.val {
-		os.Stdout.Write(res)
-	}
+	_ = "STUB: not implemented"
 	return nil
 }
+
+// Note that --simplify is treated as a parser option as it happens
+// immediately after parsing, even if it's not a [syntax.ParserOption] today.
+
+// must be standard input; fine to return
+// TODO: change the default behavior to be compact,
+// and allow using --to-json=pretty or --to-json=indent.
+
+// TODO: support atomic writes on Windows?
+
+// The first three lines are the header with the filenames, including --- and +++,
+// and are marked in bold.
+
+// the first three lines are bold
 
 const (
 	terminalGreen = "\u001b[32m"

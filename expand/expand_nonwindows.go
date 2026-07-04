@@ -5,4 +5,4 @@
 
 package expand
 
-func isWindowsErrPathNotFound(error) bool { return false }
+func isWindowsErrPathNotFound(error) bool { _ = "STUB: not implemented"; return false }

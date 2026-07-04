@@ -5,15 +5,9 @@ package interp
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"runtime"
-	"strings"
 	"time"
 
 	"mvdan.cc/sh/v3/expand"
@@ -24,11 +18,8 @@ import (
 // which is used when calling handler functions.
 // It panics if ctx has no HandlerContext stored.
 func HandlerCtx(ctx context.Context) HandlerContext {
-	hc, ok := ctx.Value(handlerCtxKey{}).(HandlerContext)
-	if !ok {
-		panic("interp.HandlerCtx: no HandlerContext in ctx")
-	}
-	return hc
+	_ = "STUB: not implemented"
+	return *new(HandlerContext)
 }
 
 type handlerCtxKey struct{}
@@ -122,117 +113,45 @@ type ExecHandlerFunc func(ctx context.Context, args []string) error
 // because Go doesn't currently support sending Interrupt on Windows.
 // [Runner] defaults to a killTimeout of 2 seconds.
 func DefaultExecHandler(killTimeout time.Duration) ExecHandlerFunc {
-	return func(ctx context.Context, args []string) error {
-		hc := HandlerCtx(ctx)
-		path, err := LookPathDir(hc.Dir, hc.Env, args[0])
-		if err != nil {
-			fmt.Fprintln(hc.Stderr, err)
-			return ExitStatus(127)
-		}
-		cmd := exec.Cmd{
-			Path:   path,
-			Args:   args,
-			Env:    execEnv(hc.Env),
-			Dir:    hc.Dir,
-			Stdin:  hc.Stdin,
-			Stdout: hc.Stdout,
-			Stderr: hc.Stderr,
-		}
-
-		err = cmd.Start()
-		if err == nil {
-			stopf := context.AfterFunc(ctx, func() {
-				if killTimeout <= 0 || runtime.GOOS == "windows" {
-					_ = cmd.Process.Signal(os.Kill)
-					return
-				}
-				_ = cmd.Process.Signal(os.Interrupt)
-				// TODO: don't sleep in this goroutine if the program
-				// stops itself with the interrupt above.
-				time.Sleep(killTimeout)
-				_ = cmd.Process.Signal(os.Kill)
-			})
-			defer stopf()
-
-			err = cmd.Wait()
-		}
-
-		switch err := err.(type) {
-		case *exec.ExitError:
-			// Windows and Plan9 do not have support for [syscall.WaitStatus]
-			// with methods like Signaled and Signal, so for those, [waitStatus] is a no-op.
-			// Note: [waitStatus] is an alias [syscall.WaitStatus]
-			if status, ok := err.Sys().(waitStatus); ok && status.Signaled() {
-				if ctx.Err() != nil {
-					return ctx.Err()
-				}
-				return ExitStatus(128 + status.Signal())
-			}
-			return ExitStatus(err.ExitCode())
-		case *exec.Error:
-			// did not start
-			fmt.Fprintf(hc.Stderr, "%v\n", err)
-			return ExitStatus(127)
-		default:
-			return err
-		}
-	}
+	_ = "STUB: not implemented"
+	return *new(ExecHandlerFunc)
 }
+
+// TODO: don't sleep in this goroutine if the program
+// stops itself with the interrupt above.
+
+// Windows and Plan9 do not have support for [syscall.WaitStatus]
+// with methods like Signaled and Signal, so for those, [waitStatus] is a no-op.
+// Note: [waitStatus] is an alias [syscall.WaitStatus]
+
+// did not start
 
 func checkStat(dir, file string, checkExec bool) (string, error) {
-	if !filepath.IsAbs(file) {
-		file = filepath.Join(dir, file)
-	}
-	info, err := os.Stat(file)
-	if err != nil {
-		return "", err
-	}
-	m := info.Mode()
-	if m.IsDir() {
-		return "", fmt.Errorf("is a directory")
-	}
-	if checkExec && runtime.GOOS != "windows" && m&0o111 == 0 {
-		return "", fmt.Errorf("permission denied")
-	}
-	return file, nil
+	_ = "STUB: not implemented"
+	return "", nil
 }
 
-func winHasExt(file string) bool {
-	i := strings.LastIndex(file, ".")
-	if i < 0 {
-		return false
-	}
-	return strings.LastIndexAny(file, `:\/`) < i
-}
+func winHasExt(file string) bool { _ = "STUB: not implemented"; return false }
 
 // findExecutable returns the path to an existing executable file.
 func findExecutable(dir, file string, exts []string) (string, error) {
-	if len(exts) == 0 {
+	_ = "STUB: not implemented"
+	return "",
+
 		// non-windows
-		return checkStat(dir, file, true)
-	}
-	if winHasExt(file) {
-		if file, err := checkStat(dir, file, true); err == nil {
-			return file, nil
-		}
-	}
-	for _, e := range exts {
-		f := file + e
-		if f, err := checkStat(dir, f, true); err == nil {
-			return f, nil
-		}
-	}
-	return "", fmt.Errorf("not found")
+		nil
 }
 
 // findFile returns the path to an existing file.
 func findFile(dir, file string, _ []string) (string, error) {
-	return checkStat(dir, file, false)
+	_ = "STUB: not implemented"
+	return "", nil
 }
 
 // LookPath is deprecated; see [LookPathDir].
 func LookPath(env expand.Environ, file string) (string, error) {
-	return LookPathDir(env.Get("PWD").String(), env, file)
+	_ = "STUB: not implemented"
+	return "", nil
 }
 
 // LookPathDir is similar to [os/exec.LookPath], with the difference that it uses the
@@ -241,71 +160,28 @@ func LookPath(env expand.Environ, file string) (string, error) {
 //
 // If no error is returned, the returned path must be valid.
 func LookPathDir(cwd string, env expand.Environ, file string) (string, error) {
-	return lookPathDir(cwd, env, file, findExecutable)
+	_ = "STUB: not implemented"
+	return "", nil
 }
 
 // findAny defines a function to pass to [lookPathDir].
 type findAny = func(dir string, file string, exts []string) (string, error)
 
 func lookPathDir(cwd string, env expand.Environ, file string, find findAny) (string, error) {
-	if find == nil {
-		panic("no find function found")
-	}
-
-	pathList := filepath.SplitList(env.Get("PATH").String())
-	if len(pathList) == 0 {
-		pathList = []string{""}
-	}
-	chars := `/`
-	if runtime.GOOS == "windows" {
-		chars = `:\/`
-	}
-	exts := pathExts(env)
-	if strings.ContainsAny(file, chars) {
-		return find(cwd, file, exts)
-	}
-	for _, elem := range pathList {
-		var path string
-		switch elem {
-		case "", ".":
-			// otherwise "foo" won't be "./foo"
-			path = "." + string(filepath.Separator) + file
-		default:
-			path = filepath.Join(elem, file)
-		}
-		if f, err := find(cwd, path, exts); err == nil {
-			return f, nil
-		}
-	}
-	return "", fmt.Errorf("%q: executable file not found in $PATH", file)
+	_ = "STUB: not implemented"
+	return "", nil
 }
+
+// otherwise "foo" won't be "./foo"
 
 // scriptFromPathDir is similar to [LookPathDir], with the difference that it looks
 // for both executable and non-executable files.
 func scriptFromPathDir(cwd string, env expand.Environ, file string) (string, error) {
-	return lookPathDir(cwd, env, file, findFile)
+	_ = "STUB: not implemented"
+	return "", nil
 }
 
-func pathExts(env expand.Environ) []string {
-	if runtime.GOOS != "windows" {
-		return nil
-	}
-	pathext := env.Get("PATHEXT").String()
-	if pathext == "" {
-		return []string{".com", ".exe", ".bat", ".cmd"}
-	}
-	var exts []string
-	for e := range strings.SplitSeq(strings.ToLower(pathext), `;`) {
-		if e == "" {
-			continue
-		}
-		if e[0] != '.' {
-			e = "." + e
-		}
-		exts = append(exts, e)
-	}
-	return exts
-}
+func pathExts(env expand.Environ) []string { _ = "STUB: not implemented"; return nil }
 
 // OpenHandlerFunc is a handler which opens files.
 // It is called for all files that are opened directly by the shell,
@@ -330,21 +206,11 @@ type OpenHandlerFunc func(ctx context.Context, path string, flag int, perm os.Fi
 // It uses [os.OpenFile] to open files.
 //
 // For the sake of portability, /dev/null opens NUL on Windows.
-func DefaultOpenHandler() OpenHandlerFunc {
-	return func(ctx context.Context, path string, flag int, perm os.FileMode) (io.ReadWriteCloser, error) {
-		mc := HandlerCtx(ctx)
-		if runtime.GOOS == "windows" && path == "/dev/null" {
-			path = "NUL"
-			// Note that even though https://go.dev/issue/71752 was resolved for Windows,
-			// the workaround here seems to still be required for Wine as of 10.14.
-			// TODO(mvdan): Why? Is this Wine's fault?
-			flag &^= os.O_TRUNC
-		} else if path != "" && !filepath.IsAbs(path) {
-			path = filepath.Join(mc.Dir, path)
-		}
-		return os.OpenFile(path, flag, perm)
-	}
-}
+func DefaultOpenHandler() OpenHandlerFunc { _ = "STUB: not implemented"; return *new(OpenHandlerFunc) }
+
+// Note that even though https://go.dev/issue/71752 was resolved for Windows,
+// the workaround here seems to still be required for Wine as of 10.14.
+// TODO(mvdan): Why? Is this Wine's fault?
 
 // TODO(v4): if this is kept in v4, it most likely needs to use [io/fs.DirEntry] for efficiency
 
@@ -362,17 +228,15 @@ type ReadDirHandlerFunc2 func(ctx context.Context, path string) ([]fs.DirEntry, 
 // DefaultReadDirHandler returns the [ReadDirHandlerFunc] used by default.
 // It makes use of [ioutil.ReadDir].
 func DefaultReadDirHandler() ReadDirHandlerFunc {
-	return func(ctx context.Context, path string) ([]fs.FileInfo, error) {
-		return ioutil.ReadDir(path)
-	}
+	_ = "STUB: not implemented"
+	return *new(ReadDirHandlerFunc)
 }
 
 // DefaultReadDirHandler2 returns the [ReadDirHandlerFunc2] used by default.
 // It uses [os.ReadDir].
 func DefaultReadDirHandler2() ReadDirHandlerFunc2 {
-	return func(ctx context.Context, path string) ([]fs.DirEntry, error) {
-		return os.ReadDir(path)
-	}
+	_ = "STUB: not implemented"
+	return *new(ReadDirHandlerFunc2)
 }
 
 // StatHandlerFunc is a handler which gets a file's information.
@@ -381,12 +245,4 @@ type StatHandlerFunc func(ctx context.Context, name string, followSymlinks bool)
 
 // DefaultStatHandler returns the [StatHandlerFunc] used by default.
 // It makes use of [os.Stat] and [os.Lstat], depending on followSymlinks.
-func DefaultStatHandler() StatHandlerFunc {
-	return func(ctx context.Context, path string, followSymlinks bool) (fs.FileInfo, error) {
-		if !followSymlinks {
-			return os.Lstat(path)
-		} else {
-			return os.Stat(path)
-		}
-	}
-}
+func DefaultStatHandler() StatHandlerFunc { _ = "STUB: not implemented"; return *new(StatHandlerFunc) }

@@ -3,14 +3,6 @@
 
 package shell
 
-import (
-	"os"
-	"strings"
-
-	"mvdan.cc/sh/v3/expand"
-	"mvdan.cc/sh/v3/syntax"
-)
-
 // Expand performs shell expansion on s as if it were within double quotes,
 // using env to resolve variables. This includes parameter expansion, arithmetic
 // expansion, and quote removal.
@@ -24,16 +16,8 @@ import (
 //
 // An error will be reported if the input string had invalid syntax.
 func Expand(s string, env func(string) string) (string, error) {
-	p := syntax.NewParser()
-	word, err := p.Document(strings.NewReader(s))
-	if err != nil {
-		return "", err
-	}
-	if env == nil {
-		env = os.Getenv
-	}
-	cfg := &expand.Config{Env: expand.FuncEnviron(env)}
-	return expand.Document(cfg, word)
+	_ = "STUB: not implemented"
+	return "", nil
 }
 
 // Fields performs shell expansion on s as if it were a command's arguments,
@@ -50,17 +34,6 @@ func Expand(s string, env func(string) string) (string, error) {
 //
 // An error will be reported if the input string had invalid syntax.
 func Fields(s string, env func(string) string) ([]string, error) {
-	p := syntax.NewParser()
-	var words []*syntax.Word
-	for w, err := range p.WordsSeq(strings.NewReader(s)) {
-		if err != nil {
-			return nil, err
-		}
-		words = append(words, w)
-	}
-	if env == nil {
-		env = os.Getenv
-	}
-	cfg := &expand.Config{Env: expand.FuncEnviron(env)}
-	return expand.Fields(cfg, words...)
+	_ = "STUB: not implemented"
+	return nil, nil
 }

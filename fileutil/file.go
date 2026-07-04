@@ -8,7 +8,6 @@ package fileutil
 import (
 	"io/fs"
 	"regexp"
-	"strings"
 )
 
 var (
@@ -20,22 +19,14 @@ var (
 
 // HasShebang reports whether bs begins with a valid shell shebang.
 // It supports variations with /usr and env.
-func HasShebang(bs []byte) bool {
-	return Shebang(bs) != ""
-}
+func HasShebang(bs []byte) bool { _ = "STUB: not implemented"; return false }
 
 // Shebang parses a "#!" sequence from the beginning of the input bytes,
 // and returns the shell that it points to.
 //
 // For instance, it returns "sh" for "#!/bin/sh",
 // and "bash" for "#!/usr/bin/env bash".
-func Shebang(bs []byte) string {
-	m := shebangRe.FindSubmatch(bs)
-	if m == nil {
-		return ""
-	}
-	return string(m[3])
-}
+func Shebang(bs []byte) string { _ = "STUB: not implemented"; return "" }
 
 // ScriptConfidence defines how likely a file is to be a shell script,
 // from complete certainty that it is not one to complete certainty that
@@ -61,24 +52,24 @@ const (
 //
 // Deprecated: prefer [CouldBeScript2], which usually requires fewer syscalls.
 func CouldBeScript(info fs.FileInfo) ScriptConfidence {
-	return CouldBeScript2(fs.FileInfoToDirEntry(info))
+	_ = "STUB: not implemented"
+	return *new(ScriptConfidence)
 }
 
 // CouldBeScript2 reports how likely a directory entry is to be a shell script.
 // It discards directories and other non-regular files like symbolic links,
 // filenames beginning with '.', and files with non-shell extensions.
 func CouldBeScript2(entry fs.DirEntry) ScriptConfidence {
-	name := entry.Name()
-	switch {
-	case name[0] == '.':
-		return ConfNotScript // '.' prefix (hidden file)
-	case !entry.Type().IsRegular():
-		return ConfNotScript // dir, symlink, named pipes, etc
-	case extRe.MatchString(name):
-		return ConfIsScript // shell extension
-	case strings.IndexByte(name, '.') > 0:
-		return ConfNotScript // non-shell extension
-	default:
-		return ConfIfShebang // no extension; read and look for a shebang
-	}
+	_ = "STUB: not implemented"
+	return *new(ScriptConfidence)
 }
+
+// '.' prefix (hidden file)
+
+// dir, symlink, named pipes, etc
+
+// shell extension
+
+// non-shell extension
+
+// no extension; read and look for a shebang

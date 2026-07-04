@@ -172,9 +172,7 @@ const (
 	globExcl  // !(
 )
 
-func (t token) isLit() bool {
-	return t == _Lit || t == _LitWord || t == _LitRedir
-}
+func (t token) isLit() bool { _ = "STUB: not implemented"; return false }
 
 type RedirOperator token
 
@@ -380,14 +378,14 @@ const (
 	TsAfter      = BinTestOperator(rdrOut)           // >
 )
 
-func (o RedirOperator) String() string    { return token(o).String() }
-func (o ProcOperator) String() string     { return token(o).String() }
-func (o GlobOperator) String() string     { return token(o).String() }
-func (o BinCmdOperator) String() string   { return token(o).String() }
-func (o CaseOperator) String() string     { return token(o).String() }
-func (o ParNamesOperator) String() string { return token(o).String() }
-func (o ParExpOperator) String() string   { return token(o).String() }
-func (o UnAritOperator) String() string   { return token(o).String() }
-func (o BinAritOperator) String() string  { return token(o).String() }
-func (o UnTestOperator) String() string   { return token(o).String() }
-func (o BinTestOperator) String() string  { return token(o).String() }
+func (o RedirOperator) String() string    { _ = "STUB: not implemented"; return "" }
+func (o ProcOperator) String() string     { _ = "STUB: not implemented"; return "" }
+func (o GlobOperator) String() string     { _ = "STUB: not implemented"; return "" }
+func (o BinCmdOperator) String() string   { _ = "STUB: not implemented"; return "" }
+func (o CaseOperator) String() string     { _ = "STUB: not implemented"; return "" }
+func (o ParNamesOperator) String() string { _ = "STUB: not implemented"; return "" }
+func (o ParExpOperator) String() string   { _ = "STUB: not implemented"; return "" }
+func (o UnAritOperator) String() string   { _ = "STUB: not implemented"; return "" }
+func (o BinAritOperator) String() string  { _ = "STUB: not implemented"; return "" }
+func (o UnTestOperator) String() string   { _ = "STUB: not implemented"; return "" }
+func (o BinTestOperator) String() string  { _ = "STUB: not implemented"; return "" }

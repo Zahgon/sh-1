@@ -11,8 +11,6 @@
 package coreutils
 
 import (
-	"context"
-
 	"github.com/u-root/u-root/pkg/core"
 	"github.com/u-root/u-root/pkg/core/base64"
 	"github.com/u-root/u-root/pkg/core/cat"
@@ -59,26 +57,6 @@ var commandBuilders = map[string]func() core.Command{
 // by the system. You may want to use only on Windows to ensure that the system
 // core utils are used on other platforms, like macOS and Linux.
 func ExecHandler(next interp.ExecHandlerFunc) interp.ExecHandlerFunc {
-	return func(ctx context.Context, args []string) error {
-		program, programArgs := args[0], args[1:]
-
-		newCoreUtil, ok := commandBuilders[program]
-		if !ok {
-			return next(ctx, args)
-		}
-
-		c := interp.HandlerCtx(ctx)
-
-		cmd := newCoreUtil()
-		cmd.SetIO(c.Stdin, c.Stdout, c.Stderr)
-		cmd.SetWorkingDir(c.Dir)
-		cmd.SetLookupEnv(func(key string) (string, bool) {
-			v := c.Env.Get(key)
-			return v.Str, v.Set
-		})
-		if err := cmd.RunContext(ctx, programArgs...); err != nil {
-			return &Error{err: err}
-		}
-		return nil
-	}
+	_ = "STUB: not implemented"
+	return *new(interp.ExecHandlerFunc)
 }

@@ -7,6 +7,4 @@ import (
 	"time"
 )
 
-func getAtime(info fs.FileInfo) time.Time {
-	return info.ModTime()
-}
+func getAtime(info fs.FileInfo) time.Time { _ = "STUB: not implemented"; return *new(time.Time) }

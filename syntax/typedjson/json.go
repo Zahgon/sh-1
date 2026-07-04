@@ -17,9 +17,6 @@ package typedjson
 // TODO: encoding and decoding nodes other than File is untested.
 
 import (
-	"encoding"
-	"encoding/json"
-	"fmt"
 	"io"
 	"reflect"
 
@@ -27,9 +24,7 @@ import (
 )
 
 // Encode is a shortcut for [EncodeOptions.Encode] with the default options.
-func Encode(w io.Writer, node syntax.Node) error {
-	return EncodeOptions{}.Encode(w, node)
-}
+func Encode(w io.Writer, node syntax.Node) error { _ = "STUB: not implemented"; return nil }
 
 // EncodeOptions allows configuring how syntax nodes are encoded.
 type EncodeOptions struct {
@@ -41,113 +36,29 @@ type EncodeOptions struct {
 // Encode writes node to w in its typed JSON form,
 // as described in the package documentation.
 func (opts EncodeOptions) Encode(w io.Writer, node syntax.Node) error {
-	val := reflect.ValueOf(node)
-	encVal, tname := encodeValue(val)
-	if tname == "" {
-		panic("node did not contain a named type?")
-	}
-	encVal.Elem().Field(0).SetString(tname)
-	enc := json.NewEncoder(w)
-	enc.SetEscapeHTML(false)
-	if opts.Indent != "" {
-		enc.SetIndent("", opts.Indent)
-	}
-	return enc.Encode(encVal.Interface())
+	_ = "STUB: not implemented"
+	return nil
 }
 
 func encodeValue(val reflect.Value) (reflect.Value, string) {
-	switch val.Kind() {
-	case reflect.Pointer:
-		if val.IsNil() {
-			break
-		}
-		return encodeValue(val.Elem())
-	case reflect.Interface:
-		if val.IsNil() {
-			break
-		}
-		enc, tname := encodeValue(val.Elem())
-		if tname == "" {
-			panic("interface did not contain a named type?")
-		}
-		enc.Elem().Field(0).SetString(tname)
-		return enc, ""
-	case reflect.Struct:
-		// Construct a new struct with an optional Type, Pos and End,
-		// and then all the visible fields which aren't positions.
-		typ := val.Type()
-		fields := []reflect.StructField{typeField, posField, endField}
-		for i := range typ.NumField() {
-			field := typ.Field(i)
-			typ := anyType
-			if field.Type == posType {
-				typ = exportedPosType
-			}
-			fields = append(fields, reflect.StructField{
-				Name: field.Name,
-				Type: typ,
-				Tag:  `json:",omitempty"`,
-			})
-		}
-		encTyp := reflect.StructOf(fields)
-		enc := reflect.New(encTyp).Elem()
-
-		// Node methods are defined on struct pointer receivers.
-		if node, _ := val.Addr().Interface().(syntax.Node); node != nil {
-			encodePos(enc.Field(1), node.Pos()) // posField
-			encodePos(enc.Field(2), node.End()) // endField
-		}
-		// Do the rest of the fields.
-		for i := 3; i < encTyp.NumField(); i++ {
-			ftyp := encTyp.Field(i)
-			fval := val.FieldByName(ftyp.Name)
-			if ftyp.Type == exportedPosType {
-				encodePos(enc.Field(i), fval.Interface().(syntax.Pos))
-			} else {
-				encElem, _ := encodeValue(fval)
-				if encElem.IsValid() {
-					enc.Field(i).Set(encElem)
-				}
-			}
-		}
-
-		// Addr helps prevent an allocation as we use any fields.
-		return enc.Addr(), typ.Name()
-	case reflect.Slice:
-		n := val.Len()
-		if n == 0 {
-			break
-		}
-		enc := reflect.MakeSlice(anySliceType, n, n)
-		for i := range n {
-			elem := val.Index(i)
-			encElem, _ := encodeValue(elem)
-			enc.Index(i).Set(encElem)
-		}
-		return enc, ""
-	case reflect.Bool:
-		if val.Bool() {
-			return val, ""
-		}
-	case reflect.String:
-		if val.String() != "" {
-			return val, ""
-		}
-	case reflect.Uint8, reflect.Uint32:
-		if val.Uint() == 0 {
-			break
-		}
-		// Encode token-derived operator enums as their syntax string form
-		// so the wire format stays stable as new tokens are added.
-		if s, ok := reflect.TypeAssert[fmt.Stringer](val); ok {
-			return reflect.ValueOf(s.String()), ""
-		}
-		return val, ""
-	default:
-		panic(val.Kind().String())
-	}
-	return noValue, ""
+	_ = "STUB: not implemented"
+	return *new(reflect.Value), ""
 }
+
+// Construct a new struct with an optional Type, Pos and End,
+// and then all the visible fields which aren't positions.
+
+// Node methods are defined on struct pointer receivers.
+
+// posField
+// endField
+
+// Do the rest of the fields.
+
+// Addr helps prevent an allocation as we use any fields.
+
+// Encode token-derived operator enums as their syntax string form
+// so the wire format stays stable as new tokens are added.
 
 var (
 	noValue reflect.Value
@@ -181,29 +92,17 @@ type exportedPos struct {
 }
 
 func encodePos(encPtr reflect.Value, val syntax.Pos) {
+	_ = "STUB: not implemented"
 	// TODO: perhaps we should encode recovered positions, as that is still useful information.
-	if !val.IsValid() {
-		return
-	}
-	enc := reflect.New(exportedPosType.Elem())
-	encPtr.Set(enc)
-	enc = enc.Elem()
-
-	enc.Field(0).SetUint(uint64(val.Offset()))
-	enc.Field(1).SetUint(uint64(val.Line()))
-	enc.Field(2).SetUint(uint64(val.Col()))
+	return
 }
 
-func decodePos(val reflect.Value, enc map[string]any) {
-	offset := uint(enc["Offset"].(float64))
-	line := uint(enc["Line"].(float64))
-	column := uint(enc["Col"].(float64))
-	val.Set(reflect.ValueOf(syntax.NewPos(offset, line, column)))
-}
+func decodePos(val reflect.Value, enc map[string]any) { _ = "STUB: not implemented"; return }
 
 // Decode is a shortcut for [DecodeOptions.Decode] with the default options.
 func Decode(r io.Reader) (syntax.Node, error) {
-	return DecodeOptions{}.Decode(r)
+	_ = "STUB: not implemented"
+	return *new(syntax.Node), nil
 }
 
 // DecodeOptions allows configuring how syntax nodes are encoded.
@@ -214,15 +113,8 @@ type DecodeOptions struct {
 // Decode writes node to w in its typed JSON form,
 // as described in the package documentation.
 func (opts DecodeOptions) Decode(r io.Reader) (syntax.Node, error) {
-	var enc any
-	if err := json.NewDecoder(r).Decode(&enc); err != nil {
-		return nil, err
-	}
-	node := new(syntax.Node)
-	if err := decodeValue(reflect.ValueOf(node).Elem(), enc); err != nil {
-		return nil, err
-	}
-	return *node, nil
+	_ = "STUB: not implemented"
+	return *new(syntax.Node), nil
 }
 
 var nodeByName = map[string]reflect.Type{
@@ -268,65 +160,10 @@ var nodeByName = map[string]reflect.Type{
 	"CStyleLoop": reflect.TypeFor[syntax.CStyleLoop](),
 }
 
-func decodeValue(val reflect.Value, enc any) error {
-	switch enc := enc.(type) {
-	case map[string]any:
-		if val.Kind() == reflect.Pointer && val.IsNil() {
-			val.Set(reflect.New(val.Type().Elem()))
-		}
-		if typeName, _ := enc["Type"].(string); typeName != "" {
-			typ := nodeByName[typeName]
-			if typ == nil {
-				return fmt.Errorf("unknown type: %q", typeName)
-			}
-			val.Set(reflect.New(typ))
-		}
-		for val.Kind() == reflect.Pointer || val.Kind() == reflect.Interface {
-			val = val.Elem()
-		}
-		for name, fv := range enc {
-			fval := val.FieldByName(name)
-			switch name {
-			case "Type", "Pos", "End":
-				// Type is already used above. Pos and End came from method calls.
-				continue
-			}
-			if !fval.IsValid() {
-				return fmt.Errorf("unknown field for %s: %q", val.Type(), name)
-			}
-			if fval.Type() == posType {
-				// TODO: don't panic on bad input
-				decodePos(fval, fv.(map[string]any))
-				continue
-			}
-			if err := decodeValue(fval, fv); err != nil {
-				return err
-			}
-		}
-	case []any:
-		for _, encElem := range enc {
-			elem := reflect.New(val.Type().Elem()).Elem()
-			if err := decodeValue(elem, encElem); err != nil {
-				return err
-			}
-			val.Set(reflect.Append(val, elem))
-		}
-	case string:
-		if val.Kind() == reflect.Uint32 {
-			u, ok := val.Addr().Interface().(encoding.TextUnmarshaler)
-			if !ok {
-				return fmt.Errorf("cannot decode string into %s", val.Type())
-			}
-			return u.UnmarshalText([]byte(enc))
-		}
-		val.SetString(enc)
-	case float64:
-		// Note that encoding/json defaults to float64 for numbers.
-		val.SetUint(uint64(enc))
-	default:
-		if enc != nil {
-			val.Set(reflect.ValueOf(enc))
-		}
-	}
-	return nil
-}
+func decodeValue(val reflect.Value, enc any) error { _ = "STUB: not implemented"; return nil }
+
+// Type is already used above. Pos and End came from method calls.
+
+// TODO: don't panic on bad input
+
+// Note that encoding/json defaults to float64 for numbers.

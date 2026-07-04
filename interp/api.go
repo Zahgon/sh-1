@@ -12,16 +12,8 @@ package interp
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"io"
-	"io/fs"
-	"maps"
 	"os"
-	"path/filepath"
-	"slices"
-	"strconv"
-	"time"
 
 	"mvdan.cc/sh/v3/expand"
 	"mvdan.cc/sh/v3/syntax"
@@ -194,52 +186,24 @@ type exitStatus struct {
 
 // clear sets the exit status code and error to zero, as long as the exit status
 // was not set by `return`, `exit`, or a fatal error.
-func (e *exitStatus) clear() {
-	if e.returning || e.exiting || e.fatalExit {
-		return
-	}
-	e.code = 0
-	e.err = nil
+func (e *exitStatus) clear() { _ = "STUB: not implemented"; return }
+
+func (e *exitStatus) ok() bool {
+	_ = "STUB: not implemented"
+
+	// oneIf sets the exit status code to 1 if b is true.
+	// Note that it assumes the exit status hasn't been set yet,
+	// meaning that [exitStatus.code] and [exitStatus.err] are zero values.
+	return false
 }
 
-func (e *exitStatus) ok() bool { return e.code == 0 }
+func (e *exitStatus) oneIf(b bool) { _ = "STUB: not implemented"; return }
 
-// oneIf sets the exit status code to 1 if b is true.
-// Note that it assumes the exit status hasn't been set yet,
-// meaning that [exitStatus.code] and [exitStatus.err] are zero values.
-func (e *exitStatus) oneIf(b bool) {
-	if b {
-		e.code = 1
-	}
-}
+func (e *exitStatus) fatal(err error) { _ = "STUB: not implemented"; return }
 
-func (e *exitStatus) fatal(err error) {
-	if e.fatalExit || err == nil {
-		return
-	}
-	e.exiting = true
-	e.fatalExit = true
-	e.err = err
-	if e.code == 0 {
-		e.code = 1
-	}
-}
+func (e *exitStatus) fromHandlerError(err error) { _ = "STUB: not implemented"; return }
 
-func (e *exitStatus) fromHandlerError(err error) {
-	if err == nil {
-		return
-	}
-	var exit errBuiltinExitStatus
-	var es ExitStatus
-	if errors.As(err, &exit) {
-		*e = exitStatus(exit)
-	} else if errors.As(err, &es) {
-		e.err = err
-		e.code = uint8(es)
-	} else {
-		e.fatal(err) // handler's custom fatal error
-	}
-}
+// handler's custom fatal error
 
 type bgProc struct {
 	// closed when the background process finishes,
@@ -260,39 +224,11 @@ type alias struct {
 // Any unset options fall back to their defaults. For example, not supplying the
 // environment falls back to the process's environment, and not supplying the
 // standard output writer means that the output will be discarded.
-func New(opts ...RunnerOption) (*Runner, error) {
-	r := &Runner{
-		usedNew:        true,
-		openHandler:    DefaultOpenHandler(),
-		readDirHandler: DefaultReadDirHandler2(),
-		statHandler:    DefaultStatHandler(),
-	}
-	r.dirStack = r.dirBootstrap[:0]
-	// turn "on" the default Bash options
-	for i, opt := range bashOptsTable {
-		r.opts[len(posixOptsTable)+i] = opt.defaultState
-	}
+func New(opts ...RunnerOption) (*Runner, error) { _ = "STUB: not implemented"; return nil, nil }
 
-	for _, opt := range opts {
-		if err := opt(r); err != nil {
-			return nil, err
-		}
-	}
+// turn "on" the default Bash options
 
-	// Set the default fallbacks, if necessary.
-	if r.Env == nil {
-		Env(nil)(r)
-	}
-	if r.Dir == "" {
-		if err := Dir("")(r); err != nil {
-			return nil, err
-		}
-	}
-	if r.stdout == nil || r.stderr == nil {
-		StdIO(r.stdin, r.stdout, r.stderr)(r)
-	}
-	return r, nil
-}
+// Set the default fallbacks, if necessary.
 
 // RunnerOption can be passed to [New] to alter a [Runner]'s behaviour.
 // It can also be applied directly on an existing Runner,
@@ -304,123 +240,35 @@ type RunnerOption func(*Runner) error
 
 // Env sets the interpreter's environment. If nil, a copy of the current
 // process's environment is used.
-func Env(env expand.Environ) RunnerOption {
-	return func(r *Runner) error {
-		if env == nil {
-			env = expand.ListEnviron(os.Environ()...)
-		}
-		r.Env = env
-		return nil
-	}
-}
+func Env(env expand.Environ) RunnerOption { _ = "STUB: not implemented"; return *new(RunnerOption) }
 
 // Dir sets the interpreter's working directory. If empty, the process's current
 // directory is used.
-func Dir(path string) RunnerOption {
-	return func(r *Runner) error {
-		if path == "" {
-			path, err := os.Getwd()
-			if err != nil {
-				return fmt.Errorf("could not get current dir: %w", err)
-			}
-			r.Dir = path
-			return nil
-		}
-		path, err := filepath.Abs(path)
-		if err != nil {
-			return fmt.Errorf("could not get absolute dir: %w", err)
-		}
-		info, err := os.Stat(path)
-		if err != nil {
-			return fmt.Errorf("could not stat: %w", err)
-		}
-		if !info.IsDir() {
-			return fmt.Errorf("%s is not a directory", path)
-		}
-		r.Dir = path
-		return nil
-	}
-}
+func Dir(path string) RunnerOption { _ = "STUB: not implemented"; return *new(RunnerOption) }
 
 // Interactive configures the interpreter to behave like an interactive shell,
 // akin to Bash. Currently, this only enables the expansion of aliases,
 // but later on it should also change other behavior.
-func Interactive(enabled bool) RunnerOption {
-	return func(r *Runner) error {
-		r.opts[optExpandAliases] = enabled
-		return nil
-	}
-}
+func Interactive(enabled bool) RunnerOption { _ = "STUB: not implemented"; return *new(RunnerOption) }
 
 // Params populates the shell options and parameters. For example, Params("-e",
 // "--", "foo") will set the "-e" option and the parameters ["foo"], and
 // Params("+e") will unset the "-e" option and leave the parameters untouched.
 //
 // This is similar to what the interpreter's "set" builtin does.
-func Params(args ...string) RunnerOption {
-	return func(r *Runner) error {
-		fp := flagParser{remaining: args}
-		for fp.more() {
-			flag := fp.flag()
-			if flag == "-" {
-				// TODO: implement "The -x and -v options are turned off."
-				if args := fp.args(); len(args) > 0 {
-					r.Params = args
-				}
-				return nil
-			}
-			enable := flag[0] == '-'
-			if flag[1] != 'o' {
-				opt := r.posixOptByFlag(flag[1])
-				if opt == nil {
-					return fmt.Errorf("invalid option: %q", flag)
-				}
-				*opt = enable
-				continue
-			}
-			value := fp.value()
-			if value == "" && enable {
-				for i, opt := range &posixOptsTable {
-					r.printOptLine(opt.name, r.opts[i], true)
-				}
-				continue
-			}
-			if value == "" && !enable {
-				for i, opt := range &posixOptsTable {
-					setFlag := "+o"
-					if r.opts[i] {
-						setFlag = "-o"
-					}
-					r.outf("set %s %s\n", setFlag, opt.name)
-				}
-				continue
-			}
-			opt := r.posixOptByName(value)
-			if opt == nil {
-				return fmt.Errorf("invalid option: %q", value)
-			}
-			*opt = enable
-		}
-		if args := fp.args(); args != nil {
-			// If "--" wasn't given and there were zero arguments,
-			// we don't want to override the current parameters.
-			r.Params = args
+func Params(args ...string) RunnerOption { _ = "STUB: not implemented"; return *new(RunnerOption) }
 
-			// Record whether a sourced script sets the parameters.
-			if r.inSource {
-				r.sourceSetParams = true
-			}
-		}
-		return nil
-	}
-}
+// TODO: implement "The -x and -v options are turned off."
+
+// If "--" wasn't given and there were zero arguments,
+// we don't want to override the current parameters.
+
+// Record whether a sourced script sets the parameters.
 
 // CallHandler sets the call handler. See [CallHandlerFunc] for more info.
 func CallHandler(f CallHandlerFunc) RunnerOption {
-	return func(r *Runner) error {
-		r.callHandler = f
-		return nil
-	}
+	_ = "STUB: not implemented"
+	return *new(RunnerOption)
 }
 
 // ExecHandler sets one command execution handler,
@@ -429,10 +277,8 @@ func CallHandler(f CallHandlerFunc) RunnerOption {
 // Deprecated: use [ExecHandlers] instead, which allows chaining handlers more easily
 // like middleware functions.
 func ExecHandler(f ExecHandlerFunc) RunnerOption {
-	return func(r *Runner) error {
-		r.execHandler = f
-		return nil
-	}
+	_ = "STUB: not implemented"
+	return *new(RunnerOption)
 }
 
 // ExecHandlers appends middlewares to handle command execution.
@@ -450,10 +296,8 @@ func ExecHandler(f ExecHandlerFunc) RunnerOption {
 //
 // The last exec handler is always [DefaultExecHandler](2 * time.Second).
 func ExecHandlers(middlewares ...func(next ExecHandlerFunc) ExecHandlerFunc) RunnerOption {
-	return func(r *Runner) error {
-		r.execMiddlewares = append(r.execMiddlewares, middlewares...)
-		return nil
-	}
+	_ = "STUB: not implemented"
+	return *new(RunnerOption)
 }
 
 // TODO: consider porting the middleware API in [ExecHandlers] to [OpenHandler],
@@ -466,66 +310,31 @@ func ExecHandlers(middlewares ...func(next ExecHandlerFunc) ExecHandlerFunc) Run
 
 // OpenHandler sets file open handler. See [OpenHandlerFunc] for more info.
 func OpenHandler(f OpenHandlerFunc) RunnerOption {
-	return func(r *Runner) error {
-		r.openHandler = f
-		return nil
-	}
+	_ = "STUB: not implemented"
+	return *new(RunnerOption)
 }
 
 // ReadDirHandler sets the read directory handler. See [ReadDirHandlerFunc] for more info.
 //
 // Deprecated: use [ReadDirHandler2].
 func ReadDirHandler(f ReadDirHandlerFunc) RunnerOption {
-	return func(r *Runner) error {
-		r.readDirHandler = func(ctx context.Context, path string) ([]fs.DirEntry, error) {
-			infos, err := f(ctx, path)
-			if err != nil {
-				return nil, err
-			}
-			entries := make([]fs.DirEntry, len(infos))
-			for i, info := range infos {
-				entries[i] = fs.FileInfoToDirEntry(info)
-			}
-			return entries, nil
-		}
-		return nil
-	}
+	_ = "STUB: not implemented"
+	return *new(RunnerOption)
 }
 
 // ReadDirHandler2 sets the read directory handler. See [ReadDirHandlerFunc2] for more info.
 func ReadDirHandler2(f ReadDirHandlerFunc2) RunnerOption {
-	return func(r *Runner) error {
-		r.readDirHandler = f
-		return nil
-	}
+	_ = "STUB: not implemented"
+	return *new(RunnerOption)
 }
 
 // StatHandler sets the stat handler. See [StatHandlerFunc] for more info.
 func StatHandler(f StatHandlerFunc) RunnerOption {
-	return func(r *Runner) error {
-		r.statHandler = f
-		return nil
-	}
+	_ = "STUB: not implemented"
+	return *new(RunnerOption)
 }
 
-func stdinFile(r io.Reader) (*os.File, error) {
-	switch r := r.(type) {
-	case *os.File:
-		return r, nil
-	case nil:
-		return nil, nil
-	default:
-		pr, pw, err := os.Pipe()
-		if err != nil {
-			return nil, err
-		}
-		go func() {
-			io.Copy(pw, r)
-			pw.Close()
-		}()
-		return pr, nil
-	}
-}
+func stdinFile(r io.Reader) (*os.File, error) { _ = "STUB: not implemented"; return nil, nil }
 
 // StdIO configures an interpreter's standard input, standard output, and
 // standard error. If out or err are nil, they default to a writer that discards
@@ -541,49 +350,16 @@ func stdinFile(r io.Reader) (*os.File, error) {
 // as it has the best chance to support cancellable reads via [os.File.SetReadDeadline],
 // so that cancelling the runner's context can stop a blocked standard input read.
 func StdIO(in io.Reader, out, err io.Writer) RunnerOption {
-	return func(r *Runner) error {
-		stdin, _err := stdinFile(in)
-		if _err != nil {
-			return _err
-		}
-		r.stdin = stdin
-		if out == nil {
-			out = io.Discard
-		}
-		r.stdout = out
-		if err == nil {
-			err = io.Discard
-		}
-		r.stderr = err
-		return nil
-	}
+	_ = "STUB: not implemented"
+	return *new(RunnerOption)
 }
 
-func (r *Runner) posixOptByName(name string) *bool {
-	for i, opt := range &posixOptsTable {
-		if opt.name == name {
-			return &r.opts[i]
-		}
-	}
-	return nil
-}
+func (r *Runner) posixOptByName(name string) *bool { _ = "STUB: not implemented"; return nil }
 
-func (r *Runner) posixOptByFlag(flag byte) *bool {
-	for i, opt := range &posixOptsTable {
-		if opt.flag == flag {
-			return &r.opts[i]
-		}
-	}
-	return nil
-}
+func (r *Runner) posixOptByFlag(flag byte) *bool { _ = "STUB: not implemented"; return nil }
 
 func (r *Runner) bashOptByName(name string) (status *bool, supported bool) {
-	for i, opt := range bashOptsTable {
-		if opt.name == name {
-			index := len(posixOptsTable) + i
-			return &r.opts[index], opt.supported
-		}
-	}
+	_ = "STUB: not implemented"
 	return nil, false
 }
 
@@ -758,145 +534,45 @@ const (
 // multiple programs non-incrementally. Not calling Reset between each run will
 // mean that the shell state will be kept, including variables, options, and the
 // current directory.
-func (r *Runner) Reset() {
-	if !r.usedNew {
-		panic("use interp.New to construct a Runner")
-	}
-	if !r.didReset {
-		r.origDir = r.Dir
-		r.origParams = r.Params
-		r.origOpts = r.opts
-		r.origStdin = r.stdin
-		r.origStdout = r.stdout
-		r.origStderr = r.stderr
+func (r *Runner) Reset() { _ = "STUB: not implemented"; return }
 
-		if r.execHandler != nil && len(r.execMiddlewares) > 0 {
-			panic("interp.ExecHandler should be replaced with interp.ExecHandlers, not mixed")
-		}
-		if r.execHandler == nil {
-			r.execHandler = DefaultExecHandler(2 * time.Second)
-		}
-		// Middlewares are chained from first to last, and each can call the
-		// next in the chain, so we need to construct the chain backwards.
-		for _, mw := range slices.Backward(r.execMiddlewares) {
-			r.execHandler = mw(r.execHandler)
-		}
-		// Fill tempDir; only need to do this once given that Env will not change.
-		if dir := r.Env.Get("TMPDIR").String(); filepath.IsAbs(dir) {
-			r.tempDir = dir
-		} else {
-			r.tempDir = os.TempDir()
-		}
-		// Clean it as we will later do a string prefix match.
-		r.tempDir = filepath.Clean(r.tempDir)
-	}
-	// reset the internal state
-	*r = Runner{
-		Env:            r.Env,
-		tempDir:        r.tempDir,
-		callHandler:    r.callHandler,
-		execHandler:    r.execHandler,
-		openHandler:    r.openHandler,
-		readDirHandler: r.readDirHandler,
-		statHandler:    r.statHandler,
+// Middlewares are chained from first to last, and each can call the
+// next in the chain, so we need to construct the chain backwards.
 
-		// These can be set by functions like [Dir] or [Params], but
-		// builtins can overwrite them; reset the fields to whatever the
-		// constructor set up.
-		Dir:    r.origDir,
-		Params: r.origParams,
-		opts:   r.origOpts,
-		stdin:  r.origStdin,
-		stdout: r.origStdout,
-		stderr: r.origStderr,
+// Fill tempDir; only need to do this once given that Env will not change.
 
-		origDir:    r.origDir,
-		origParams: r.origParams,
-		origOpts:   r.origOpts,
-		origStdin:  r.origStdin,
-		origStdout: r.origStdout,
-		origStderr: r.origStderr,
+// Clean it as we will later do a string prefix match.
 
-		// emptied below, to reuse the space
-		Vars: r.Vars,
+// reset the internal state
 
-		dirStack: r.dirStack[:0],
-		usedNew:  r.usedNew,
-	}
-	// Ensure we stop referencing any pointers before we reuse bgProcs.
-	clear(r.bgProcs)
-	r.bgProcs = r.bgProcs[:0]
+// These can be set by functions like [Dir] or [Params], but
+// builtins can overwrite them; reset the fields to whatever the
+// constructor set up.
 
-	if r.Vars == nil {
-		r.Vars = make(map[string]expand.Variable)
-	} else {
-		clear(r.Vars)
-	}
-	// TODO(v4): Use the supplied Env directly if it implements enough methods.
-	r.writeEnv = &overlayEnviron{parent: r.Env}
-	if !r.writeEnv.Get("HOME").IsSet() {
-		home, _ := os.UserHomeDir()
-		r.setVarString("HOME", home)
-	}
-	if !r.writeEnv.Get("UID").IsSet() {
-		r.setVar("UID", expand.Variable{
-			Set:      true,
-			Kind:     expand.String,
-			ReadOnly: true,
-			Str:      strconv.Itoa(os.Getuid()),
-		})
-	}
-	if !r.writeEnv.Get("EUID").IsSet() {
-		r.setVar("EUID", expand.Variable{
-			Set:      true,
-			Kind:     expand.String,
-			ReadOnly: true,
-			Str:      strconv.Itoa(os.Geteuid()),
-		})
-	}
-	if !r.writeEnv.Get("GID").IsSet() {
-		r.setVar("GID", expand.Variable{
-			Set:      true,
-			Kind:     expand.String,
-			ReadOnly: true,
-			Str:      strconv.Itoa(os.Getgid()),
-		})
-	}
-	r.setVarString("PWD", r.Dir)
-	r.setVarString("IFS", " \t\n")
-	r.setVarString("OPTIND", "1")
+// emptied below, to reuse the space
 
-	r.dirStack = append(r.dirStack, r.Dir)
+// Ensure we stop referencing any pointers before we reuse bgProcs.
 
-	r.didReset = true
-}
+// TODO(v4): Use the supplied Env directly if it implements enough methods.
 
 // ExitStatus is a non-zero status code resulting from running a shell node.
 type ExitStatus uint8
 
-func (s ExitStatus) Error() string { return fmt.Sprintf("exit status %d", s) }
+func (s ExitStatus) Error() string { _ = "STUB: not implemented"; return "" }
 
 // NewExitStatus creates an error which contains the specified exit status code.
 //
 // Deprecated: use [ExitStatus] directly.
 //
 //go:fix inline
-func NewExitStatus(status uint8) error {
-	return ExitStatus(status)
-}
+func NewExitStatus(status uint8) error { _ = "STUB: not implemented"; return nil }
 
 // IsExitStatus checks whether error contains an exit status and returns it.
 //
 // Deprecated: use [errors.As] with [ExitStatus] directly.
 //
 //go:fix inline
-func IsExitStatus(err error) (status uint8, ok bool) {
-	var es ExitStatus
-	if errors.As(err, &es) {
-		return uint8(es), true
-	}
-	return 0, false
-}
+func IsExitStatus(err error) (status uint8, ok bool) { _ = "STUB: not implemented"; return 0, false }
 
 // Run interprets a node, which can be a [*File], [*Stmt], or [Command]. If a non-nil
 // error is returned, it will typically contain a command's exit status, which
@@ -909,49 +585,22 @@ func IsExitStatus(err error) (status uint8, ok bool) {
 // Calling Run on an entire [*File] implies an exit, meaning that an exit trap may
 // run.
 func (r *Runner) Run(ctx context.Context, node syntax.Node) error {
-	if !r.didReset {
-		r.Reset()
-	}
-	r.fillExpandConfig(ctx)
-	r.exit = exitStatus{}
-	r.filename = ""
-	switch node := node.(type) {
-	case *syntax.File:
-		r.filename = node.Name
-		r.stmts(ctx, node.Stmts)
-	case *syntax.Stmt:
-		r.stmt(ctx, node)
-	case syntax.Command:
-		r.cmd(ctx, node)
-	default:
-		return fmt.Errorf("node can only be File, Stmt, or Command: %T", node)
-	}
-	r.trapCallback(ctx, r.callbackExit, "exit")
-	maps.Insert(r.Vars, r.writeEnv.Each)
-	// Return the first of: a fatal error, a non-fatal handler error, or the exit code.
-	if err := r.exit.err; err != nil {
-		if r.exit.code == 0 {
-			// This should never happen; too much code relies on checking [exitStatus.code]
-			// to see if the last command succeeded or failed. [exitStatus.err] should only be
-			// additional information, so fail loudly if the invariant is broken.
-			panic("ended up with a non-nil exitStatus.err but a zero exitStatus.code")
-		}
-		return err
-	}
-	if code := r.exit.code; code != 0 {
-		return ExitStatus(code)
-	}
+	_ = "STUB: not implemented"
 	return nil
 }
+
+// Return the first of: a fatal error, a non-fatal handler error, or the exit code.
+
+// This should never happen; too much code relies on checking [exitStatus.code]
+// to see if the last command succeeded or failed. [exitStatus.err] should only be
+// additional information, so fail loudly if the invariant is broken.
 
 // Exited reports whether the last Run call should exit an entire shell. This
 // can be triggered by the "exit" built-in command, for example.
 //
 // Note that this state is overwritten at every Run call, so it should be
 // checked immediately after each Run call.
-func (r *Runner) Exited() bool {
-	return r.exit.exiting
-}
+func (r *Runner) Exited() bool { _ = "STUB: not implemented"; return false }
 
 // Subshell makes a copy of the given [Runner], suitable for use concurrently
 // with the original. The copy will have the same environment, including
@@ -963,47 +612,16 @@ func (r *Runner) Exited() bool {
 //
 // To replace e.g. stdin/out/err, do [StdIO](r.stdin, r.stdout, r.stderr)(r) on
 // the copy.
-func (r *Runner) Subshell() *Runner {
-	return r.subshell(true)
-}
+func (r *Runner) Subshell() *Runner { _ = "STUB: not implemented"; return nil }
 
 // subshell is like [Runner.subshell], but allows skipping some allocations and copies
 // when creating subshells which will not be used concurrently with the parent shell.
 // TODO(v4): we should expose this, e.g. SubshellForeground and SubshellBackground.
-func (r *Runner) subshell(background bool) *Runner {
-	if !r.didReset {
-		r.Reset()
-	}
-	// Keep in sync with the Runner type. Manually copy fields, to not copy
-	// sensitive ones like [errgroup.Group], and to do deep copies of slices.
-	r2 := &Runner{
-		Dir:            r.Dir,
-		tempDir:        r.tempDir,
-		Params:         r.Params,
-		callHandler:    r.callHandler,
-		execHandler:    r.execHandler,
-		openHandler:    r.openHandler,
-		readDirHandler: r.readDirHandler,
-		statHandler:    r.statHandler,
-		stdin:          r.stdin,
-		stdout:         r.stdout,
-		stderr:         r.stderr,
-		filename:       r.filename,
-		opts:           r.opts,
-		usedNew:        r.usedNew,
-		exit:           r.exit,
-		lastExit:       r.lastExit,
+func (r *Runner) subshell(background bool) *Runner { _ = "STUB: not implemented"; return nil }
 
-		origStdout: r.origStdout, // used for process substitutions
-	}
-	r2.writeEnv = newOverlayEnviron(r.writeEnv, background)
-	// Funcs are copied, since they might be modified.
-	r2.Funcs = maps.Clone(r.Funcs)
-	r2.Vars = make(map[string]expand.Variable)
-	r2.alias = maps.Clone(r.alias)
+// Keep in sync with the Runner type. Manually copy fields, to not copy
+// sensitive ones like [errgroup.Group], and to do deep copies of slices.
 
-	r2.dirStack = append(r2.dirBootstrap[:0], r.dirStack...)
-	r2.fillExpandConfig(r.ectx)
-	r2.didReset = true
-	return r2
-}
+// used for process substitutions
+
+// Funcs are copied, since they might be modified.
